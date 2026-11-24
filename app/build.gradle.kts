@@ -8,6 +8,12 @@ android {
     namespace = "it.luciorizza.ff8saveeditor"
     compileSdk = 35
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+
     defaultConfig {
         applicationId = "it.luciorizza.ff8saveeditor"
         minSdk = 26
