@@ -13,32 +13,39 @@ data class CharacterPreview(
 
 data class SavePreview(
     val gil: Long,
-    val characters: List<CharacterPreview>
+    val characters: List<CharacterPreview>,
+    val gfCount: Int,
+    val inventoryStacks: Int,
+    val ownedCards: Int
 )
 
 /**
- * Read-only preview of fields whose packed offsets are documented in Hyne's
- * GPL-3.0 SaveData.h. No bytes are changed by this class.
+ * Read-only preview based on the packed structures in Hyne's GPL-3.0 SaveData.h.
+ * All offsets below are relative to the beginning of MAIN unless noted.
  */
 object FF8SaveReader {
     private const val RAW_SIZE = 5408
     private const val MAIN_OFFSET = 464
     private const val CHARACTERS_OFFSET_IN_MAIN = 1088
     private const val CHARACTER_SIZE = 152
-    private const val PARTY_OFFSET_IN_MAIN = 3188
-    private const val GIL_OFFSET_IN_MAIN = 3212
+    private const val GF_SIZE = 68
+    private const val PARTY_OFFSET_IN_MAIN = 2724 // MISC1.party
+    private const val GIL_OFFSET_IN_MAIN = 2748 // MISC1.gils
+    private const val ITEMS_OFFSET_IN_MAIN = 2772
+    private const val CARDS_OFFSET_IN_MAIN = 4752
 
     fun read(data: ByteArray, saveOffset: Int = 0): SavePreview? {
         if (saveOffset < 0 || data.size - saveOffset < RAW_SIZE) return null
         if (data[saveOffset] != 'S'.code.toByte() ||
             data[saveOffset + 1] != 'C'.code.toByte()) return null
-
         val marker = u16(data, saveOffset + 386)
         if (marker != 0x08ff && marker != 0x0ff8) return null
 
         val main = saveOffset + MAIN_OFFSET
         val gil = u32(data, main + GIL_OFFSET_IN_MAIN)
-        val party = (0 until 3).map { data[main + PARTY_OFFSET_IN_MAIN + it].toInt() and 0xff }
+        val party = (0 until 3).map {
+            data[main + PARTY_OFFSET_IN_MAIN + it].toInt() and 0xff
+        }
         val characters = party.mapNotNull { characterIndex ->
             if (characterIndex !in 0..7) return@mapNotNull null
             val offset = main + CHARACTERS_OFFSET_IN_MAIN + characterIndex * CHARACTER_SIZE
@@ -48,11 +55,28 @@ object FF8SaveReader {
             val id = data[offset + 8].toInt() and 0xff
             CharacterPreview(characterIndex, id, exp / 1000L + 1L, currentHp, maxHp)
         }
-        return SavePreview(gil, characters)
+
+        val gfCount = (0 until 16).count { index ->
+            data[main + index * GF_SIZE + 17].toInt() and 0xff != 0
+        }
+        val inventoryStart = main + ITEMS_OFFSET_IN_MAIN + 32
+        val inventoryStacks = (0 until 198).count { index ->
+            val entry = u16(data, inventoryStart + index * 2)
+            (entry and 0xff) != 0 && (entry ushr 8) != 0
+        }
+        val cardsStart = main + CARDS_OFFSET_IN_MAIN
+        val ownedCards = (0 until 77).sumOf {
+            data[cardsStart + it].toInt() and 0xff
+        }
+
+        return SavePreview(gil, characters, gfCount, inventoryStacks, ownedCards)
     }
 
     fun format(preview: SavePreview): String = buildString {
         append("Gil: ").append(preview.gil)
+        append("\nGF riconosciuti: ").append(preview.gfCount)
+        append("\nTipi di oggetti presenti: ").append(preview.inventoryStacks)
+        append("\nCarte Triple Triad possedute: ").append(preview.ownedCards)
         if (preview.characters.isNotEmpty()) {
             append("\nPersonaggi in squadra:")
             preview.characters.forEachIndexed { index, c ->
