@@ -63,12 +63,28 @@ class MainActivity : ComponentActivity() {
                     val backupDir = File(filesDir, "backups").apply { mkdirs() }
                     val backup = File(backupDir, "${System.currentTimeMillis()}-${name.replace(Regex("[^A-Za-z0-9._-]"), "_")}")
                     FileOutputStream(backup).use { it.write(bytes) }
-                    Triple(name, bytes, backup)
-                }.onSuccess { (name, bytes, backup) ->
-                    selectedName = name
-                    pendingBytes = bytes
-                    backupFile = backup
-                    status = "File caricato e copia di sicurezza creata. Lettura dei dati di gioco non ancora disponibile."
+                    ImportedFile(name, bytes, backup, FF8SaveScanner.describe(bytes))
+                }.onSuccess { imported ->
+                    selectedName = imported.name
+                    pendingBytes = imported.bytes
+                    backupFile = imported.backup
+                    val preview = FF8SaveReader.read(imported.bytes)
+                    status = buildString {
+                        append(imported.summary)
+                        if (preview != null) {
+                            append("\n\n")
+                            append(FF8SaveReader.format(preview))
+                        } else if (imported.bytes.size >= 131072) {
+                            for (slot in 0 until 15) {
+                                val offset = 8192 + slot * 8192
+                                val cardPreview = FF8SaveReader.read(imported.bytes, offset)
+                                if (cardPreview != null) {
+                                    append("\n\nSlot ").append(slot + 1).append(":\n")
+                                    append(FF8SaveReader.format(cardPreview))
+                                }
+                            }
+                        }
+                    }
                 }.onFailure { status = "Apertura non riuscita: ${it.localizedMessage}" }
             }
         }
