@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import java.io.File
 import java.io.FileOutputStream
 
+data class ImportedFile(val name: String, val bytes: ByteArray, val backup: File, val summary: String)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
