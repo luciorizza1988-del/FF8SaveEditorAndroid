@@ -44,6 +44,17 @@ object FF8SaveWriter {
         }
     }
 
+    fun maximizeGf(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            repeat(16) { index ->
+                val offset = index * 68
+                if ((main[offset + 17].toInt() and 0xff) != 0) {
+                    put32(main, offset + 12, 9999999L)
+                    put16(main, offset + 18, 9999)
+                }
+            }
+        }
+
     fun maximizeItems(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
             val start = 2772 + 32
