@@ -92,9 +92,8 @@ object FF8SaveWriter {
 
 
     /**
-     * Junction fields store indices in Hyne's magic list. Index 31 is the
-     * final/highest-tier entry in that list; all 9 stat slots and elemental/
-     * status attack and defense slots are set to it for the active party.
+     * Junction fields store indices in Hyne's magic list. Magic ID 19 is Ultima in Hyne's magic list. All 9 stat slots and
+     * elemental/status attack and defense slots are assigned to Ultima.
      */
     fun maximizeJunctionStats(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
@@ -103,13 +102,13 @@ object FF8SaveWriter {
                 if (characterIndex in 0..7) {
                     val offset = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE
                     // HP, Strength, Vitality, Magic, Spirit, Speed, Evade, Hit, Luck
-                    repeat(9) { main[offset + 92 + it] = 31 }
+                    repeat(9) { main[offset + 92 + it] = 19 }
                     // Elemental attack and status attack
-                    main[offset + 101] = 31
-                    main[offset + 102] = 31
+                    main[offset + 101] = 19
+                    main[offset + 102] = 19
                     // Four elemental and four status defense junctions
-                    repeat(4) { main[offset + 103 + it] = 31 }
-                    repeat(4) { main[offset + 107 + it] = 31 }
+                    repeat(4) { main[offset + 103 + it] = 19 }
+                    repeat(4) { main[offset + 107 + it] = 19 }
                 }
             }
         }
