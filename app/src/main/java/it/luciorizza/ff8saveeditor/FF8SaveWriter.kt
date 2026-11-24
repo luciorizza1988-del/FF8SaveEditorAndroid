@@ -122,7 +122,8 @@ object FF8SaveWriter {
                 main[cardsOffset + index] = 0xff.toByte() // owned flag + quantity 127
             }
             // TTCARDS.cards_rare: 33 rare-card ownership flags in 5 bytes.
-            repeat(5) { index -> main[cardsOffset + 110 + index] = 0xff.toByte() }
+            repeat(4) { index -> main[cardsOffset + 110 + index] = 0xff.toByte() }
+            main[cardsOffset + 114] = 0x01
             // Rare card holders: 240 is Squall in Hyne's location encoding.
             repeat(33) { index -> main[cardsOffset + 77 + index] = 240.toByte() }
         }
