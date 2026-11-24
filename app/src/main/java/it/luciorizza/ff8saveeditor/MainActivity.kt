@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -38,6 +39,20 @@ class MainActivity : ComponentActivity() {
         var backupFile by remember { mutableStateOf<File?>(null) }
         var pendingBytes by remember { mutableStateOf<ByteArray?>(null) }
         var saveOffset by remember { mutableIntStateOf(0) }
+        var gilValue by remember { mutableStateOf("1000000") }
+        var charSlot by remember { mutableStateOf("0") }
+        var hpValue by remember { mutableStateOf("9999") }
+        var maxHpValue by remember { mutableStateOf("9999") }
+        var expValue by remember { mutableStateOf("1000000") }
+        var spellIndex by remember { mutableStateOf("1") }
+        var spellQuantity by remember { mutableStateOf("100") }
+        var junctionField by remember { mutableStateOf("0") }
+        var junctionMagicId by remember { mutableStateOf("19") }
+        var itemId by remember { mutableStateOf("1") }
+        var itemQuantity by remember { mutableStateOf("99") }
+        var cardIndex by remember { mutableStateOf("0") }
+        var cardQuantity by remember { mutableStateOf("1") }
+        var cardOwned by remember { mutableStateOf(true) }
 
         fun applyEdit(edit: (ByteArray, Int) -> FF8SaveWriter.EditResult?) {
             val current = pendingBytes ?: run { status = "Prima apri un salvataggio."; return }
@@ -124,6 +139,61 @@ class MainActivity : ComponentActivity() {
                 Button(onClick = { openLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Apri salvataggio")
                 }
+                Text("MODIFICA MANUALE", style = MaterialTheme.typography.headlineSmall)
+                Text("Scegli tu i valori. Gli indici dei personaggi vanno da 0 a 7.")
+                OutlinedTextField(value = gilValue, onValueChange = { gilValue = it }, label = { Text("Gil (0–4.294.967.295)") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = { gilValue.toLongOrNull()?.let { v -> applyEdit { b, o -> FF8SaveWriter.updateGil(b, o, v) } } ?: run { status = "Inserisci un numero valido per i Gil." } }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica Gil scelti") }
+
+                Text("PERSONAGGIO: HP ED ESPERIENZA", style = MaterialTheme.typography.titleLarge)
+                OutlinedTextField(value = charSlot, onValueChange = { charSlot = it }, label = { Text("Indice personaggio (0–7)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = hpValue, onValueChange = { hpValue = it }, label = { Text("HP attuali (0–65535)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = maxHpValue, onValueChange = { maxHpValue = it }, label = { Text("HP massimi (0–65535)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = expValue, onValueChange = { expValue = it }, label = { Text("Esperienza (0–4.294.967.295)") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val c = charSlot.toIntOrNull(); val hp = hpValue.toIntOrNull(); val mhp = maxHpValue.toIntOrNull(); val xp = expValue.toLongOrNull()
+                    if (c == null || hp == null || mhp == null || xp == null) status = "Controlla i valori del personaggio."
+                    else applyEdit { b, o -> FF8SaveWriter.updateCharacter(b, o, c, xp, hp, mhp) }
+                }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica HP ed esperienza") }
+
+                Text("MAGIE: QUANTITÀ MANUALE", style = MaterialTheme.typography.titleLarge)
+                OutlinedTextField(value = spellIndex, onValueChange = { spellIndex = it }, label = { Text("ID magia (0–31)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = spellQuantity, onValueChange = { spellQuantity = it }, label = { Text("Quantità (0–100)") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val c = charSlot.toIntOrNull(); val s = spellIndex.toIntOrNull(); val q = spellQuantity.toIntOrNull()
+                    if (c == null || s == null || q == null) status = "Controlla personaggio, ID magia e quantità."
+                    else applyEdit { b, o -> FF8SaveWriter.updateMagicStock(b, o, c, s, q) }
+                }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica quantità magia al personaggio") }
+
+                Text("JUNCTION MANUALE", style = MaterialTheme.typography.titleLarge)
+                Text("Slot 0–8: statistiche; 9: attacco elementale; 10: attacco status; 11–14: difesa elementale; 15–18: difesa status. ID magia 0–56.")
+                OutlinedTextField(value = junctionField, onValueChange = { junctionField = it }, label = { Text("Slot Junction (0–18)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = junctionMagicId, onValueChange = { junctionMagicId = it }, label = { Text("ID magia da assegnare (0–56)") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val c = charSlot.toIntOrNull(); val f = junctionField.toIntOrNull(); val id = junctionMagicId.toIntOrNull()
+                    if (c == null || f == null || id == null) status = "Controlla i valori Junction."
+                    else applyEdit { b, o -> FF8SaveWriter.updateJunction(b, o, c, f, id) }
+                }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica Junction scelto") }
+
+                Text("OGGETTI: QUANTITÀ MANUALE", style = MaterialTheme.typography.titleLarge)
+                Text("Inserisci l'ID numerico dell'oggetto (1–255) e la quantità (0–99).")
+                OutlinedTextField(value = itemId, onValueChange = { itemId = it }, label = { Text("ID oggetto") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = itemQuantity, onValueChange = { itemQuantity = it }, label = { Text("Quantità") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val id = itemId.toIntOrNull(); val q = itemQuantity.toIntOrNull()
+                    if (id == null || q == null) status = "Controlla ID oggetto e quantità."
+                    else applyEdit { b, o -> FF8SaveWriter.updateItemQuantity(b, o, id, q) }
+                }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica quantità oggetto") }
+
+                Text("TRIPLE TRIAD: MODIFICA CARTA", style = MaterialTheme.typography.titleLarge)
+                Text("Carte normali: indice 0–76; quantità 0–127. La carta viene impostata come posseduta.")
+                OutlinedTextField(value = cardIndex, onValueChange = { cardIndex = it }, label = { Text("Indice carta (0–76)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = cardQuantity, onValueChange = { cardQuantity = it }, label = { Text("Quantità carta (0–127)") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val index = cardIndex.toIntOrNull(); val q = cardQuantity.toIntOrNull()
+                    if (index == null || q == null) status = "Controlla indice e quantità della carta."
+                    else applyEdit { b, o -> FF8SaveWriter.updateCard(b, o, index, q, true) }
+                }, enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) { Text("Applica carta normale") }
+
                 Text("GIL", style = MaterialTheme.typography.titleLarge)
                 Button(onClick = { applyEdit { b, o -> FF8SaveWriter.updateGil(b, o, 99999999L) } },
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
