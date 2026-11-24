@@ -1,0 +1,107 @@
+package it.luciorizza.ff8saveeditor
+
+/**
+ * Safe FF8 save writer. Works on a copy and never mutates the caller's byte array.
+ * Layout and CRC procedure follow Hyne (GPL-3.0); see COPYING.txt.
+ */
+object FF8SaveWriter {
+    private const val RAW_SIZE = 5408
+    private const val SLOT_SIZE = 8192
+    private const val MAIN_OFFSET = 464
+    private const val MAIN_SIZE = 4944
+    private const val PARTY_OFFSET = 3188
+    private const val GIL_OFFSET = 3212
+    private const val CHARACTERS_OFFSET = 1088
+    private const val CHARACTER_SIZE = 152
+
+    data class EditResult(val bytes: ByteArray, val saveOffset: Int)
+
+    fun updateGil(source: ByteArray, saveOffset: Int = 0, gil: Long): EditResult? {
+        if (gil !in 0L..0xffffffffL) return null
+        return edit(source, saveOffset) { main ->
+            put32(main, GIL_OFFSET, gil)
+        }
+    }
+
+    fun updateCharacter(
+        source: ByteArray,
+        saveOffset: Int = 0,
+        characterSlot: Int,
+        experience: Long? = null,
+        currentHp: Int? = null,
+        maxHp: Int? = null
+    ): EditResult? {
+        if (characterSlot !in 0..7) return null
+        if (experience != null && experience !in 0L..0xffffffffL) return null
+        if (currentHp != null && currentHp !in 0..65535) return null
+        if (maxHp != null && maxHp !in 0..65535) return null
+        if (experience == null && currentHp == null && maxHp == null) return null
+        return edit(source, saveOffset) { main ->
+            val offset = CHARACTERS_OFFSET + characterSlot * CHARACTER_SIZE
+            experience?.let { put32(main, offset + 4, it) }
+            currentHp?.let { put16(main, offset, it) }
+            maxHp?.let { put16(main, offset + 2, it) }
+        }
+    }
+
+    private inline fun edit(
+        source: ByteArray,
+        saveOffset: Int,
+        changeMain: (ByteArray) -> Unit
+    ): EditResult? {
+        if (saveOffset < 0 || source.size - saveOffset < RAW_SIZE) return null
+        if (source[saveOffset] != 'S'.code.toByte() ||
+            source[saveOffset + 1] != 'C'.code.toByte()) return null
+        val marker = u16(source, saveOffset + 386)
+        if (marker != 0x08ff && marker != 0x0ff8) return null
+
+        val output = source.copyOf()
+        val main = output.copyOfRange(saveOffset + MAIN_OFFSET, saveOffset + MAIN_OFFSET + MAIN_SIZE)
+        changeMain(main)
+        val checksum = crc16(main)
+        main.copyInto(output, saveOffset + MAIN_OFFSET)
+        put16(output, saveOffset + 384, checksum)
+        put16(output, saveOffset + MAIN_OFFSET + MAIN_SIZE, checksum)
+
+        // A standalone 5408-byte raw save is expanded to a standard 8192-byte block.
+        if (output.size - saveOffset == RAW_SIZE) {
+            val expanded = ByteArray(SLOT_SIZE)
+            output.copyInto(expanded, 0, 0, saveOffset)
+            output.copyInto(expanded, saveOffset, saveOffset, saveOffset + RAW_SIZE)
+            put16(expanded, saveOffset + MAIN_OFFSET + MAIN_SIZE, checksum)
+            return EditResult(expanded, saveOffset)
+        }
+        if (output.size - saveOffset < SLOT_SIZE) return null
+        return EditResult(output, saveOffset)
+    }
+
+    private fun crc16(main: ByteArray): Int {
+        var crc = 0xffff
+        for (byte in main) {
+            val index = ((crc ushr 8) xor (byte.toInt() and 0xff)) and 0xff
+            crc = ((crc shl 8) xor crcTable[index]) and 0xffff
+        }
+        return crc xor 0xffff
+    }
+
+    private val crcTable: IntArray = IntArray(256) { value ->
+        var crc = value shl 8
+        repeat(8) {
+            crc = if ((crc and 0x8000) != 0) ((crc shl 1) xor 0x1021) else (crc shl 1)
+            crc = crc and 0xffff
+        }
+        crc
+    }
+
+    private fun u16(data: ByteArray, offset: Int): Int =
+        (data[offset].toInt() and 0xff) or ((data[offset + 1].toInt() and 0xff) shl 8)
+
+    private fun put16(data: ByteArray, offset: Int, value: Int) {
+        data[offset] = value.toByte()
+        data[offset + 1] = (value ushr 8).toByte()
+    }
+
+    private fun put32(data: ByteArray, offset: Int, value: Long) {
+        repeat(4) { index -> data[offset + index] = (value ushr (8 * index)).toByte() }
+    }
+}
