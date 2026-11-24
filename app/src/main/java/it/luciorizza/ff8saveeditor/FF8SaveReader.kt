@@ -27,9 +27,9 @@ object FF8SaveReader {
     private const val CHARACTERS_OFFSET_IN_MAIN = 1088
     private const val CHARACTER_SIZE = 152
     private const val GF_SIZE = 68
-    private const val PARTY_OFFSET_IN_MAIN = 2724 // MISC1.party
-    private const val GIL_OFFSET_IN_MAIN = 2748 // MISC1.gils
-    private const val ITEMS_OFFSET_IN_MAIN = 2772
+    private const val PARTY_OFFSET_IN_MAIN = 3188 // MISC1.party
+    private const val GIL_OFFSET_IN_MAIN = 3212 // MISC1.gils
+    private const val ITEMS_OFFSET_IN_MAIN = 3236
 
     fun read(data: ByteArray, saveOffset: Int = 0): SavePreview? {
         if (saveOffset < 0 || data.size - saveOffset < RAW_SIZE) return null
