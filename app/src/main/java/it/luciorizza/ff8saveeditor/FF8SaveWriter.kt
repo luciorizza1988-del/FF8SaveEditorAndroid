@@ -90,6 +90,43 @@ object FF8SaveWriter {
             }
         }
 
+
+    /**
+     * Junction fields store indices in Hyne's magic list. Index 31 is the
+     * final/highest-tier entry in that list; all 9 stat slots and elemental/
+     * status attack and defense slots are set to it for the active party.
+     */
+    fun maximizeJunctionStats(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            repeat(3) { partyIndex ->
+                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                if (characterIndex in 0..7) {
+                    val offset = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE
+                    // HP, Strength, Vitality, Magic, Spirit, Speed, Evade, Hit, Luck
+                    repeat(9) { main[offset + 92 + it] = 31 }
+                    // Elemental attack and status attack
+                    main[offset + 101] = 31
+                    main[offset + 102] = 31
+                    // Four elemental and four status defense junctions
+                    repeat(4) { main[offset + 103 + it] = 31 }
+                    repeat(4) { main[offset + 107 + it] = 31 }
+                }
+            }
+        }
+
+    /** Gives all 77 standard cards 127 copies and marks all 33 rare cards owned. */
+    fun maximizeTripleTriad(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            val cardsOffset = 4752
+            repeat(77) { index ->
+                main[cardsOffset + index] = 0xff.toByte() // owned flag + quantity 127
+            }
+            // TTCARDS.cards_rare: 33 rare-card ownership flags in 5 bytes.
+            repeat(5) { index -> main[cardsOffset + 110 + index] = 0xff.toByte() }
+            // Rare card holders: 240 is Squall in Hyne's location encoding.
+            repeat(33) { index -> main[cardsOffset + 77 + index] = 240.toByte() }
+        }
+
     private inline fun edit(
         source: ByteArray,
         saveOffset: Int,
