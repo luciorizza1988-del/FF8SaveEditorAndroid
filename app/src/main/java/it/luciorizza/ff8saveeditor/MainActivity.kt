@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
                     Text("Esporta copia modificata")
                 }
-                Text("Nota: Junction massimizza le scorte di magie dei tre personaggi attivi. GF e carte saranno aggiunti dopo la verifica dei rispettivi dati.",
+                Text("Nota: Junction porta a 100 le scorte delle 32 magie dei tre personaggi attivi. La modifica delle statistiche Junction e delle carte Triple Triad richiede ancora una verifica del formato.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
             }
         }
