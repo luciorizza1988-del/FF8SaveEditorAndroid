@@ -145,7 +145,7 @@ object FF8SaveWriter {
     fun maximizeParty(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
             repeat(3) { partyIndex ->
-                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                val characterIndex = main[PARTY_OFFSET + partyIndex].toInt() and 0xff
                 if (characterIndex in 0..7) {
                     val offset = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE
                     put16(main, offset, 9999)
@@ -163,7 +163,7 @@ object FF8SaveWriter {
     fun maximizeJunctionStats(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
             repeat(3) { partyIndex ->
-                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                val characterIndex = main[PARTY_OFFSET + partyIndex].toInt() and 0xff
                 if (characterIndex in 0..7) {
                     val offset = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE
                     // HP, Strength, Vitality, Magic, Spirit, Speed, Evade, Hit, Luck
