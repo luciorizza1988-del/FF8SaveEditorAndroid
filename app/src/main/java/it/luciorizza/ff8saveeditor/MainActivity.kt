@@ -137,7 +137,7 @@ class MainActivity : ComponentActivity() {
                 Text("JUNCTION E MAGIE", style = MaterialTheme.typography.titleLarge)
                 Button(onClick = { applyEdit { b, o -> FF8SaveWriter.maximizeJunctionStats(b, o) } },
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
-                    Text("Massimizza tutti i Junction (magia più potente)")
+                    Text("Assegna Ultima a tutti gli slot Junction")
                 }
                 Button(onClick = { applyEdit { b, o -> FF8SaveWriter.maximizeJunctionMagic(b, o) } },
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
                     Text("Esporta copia modificata")
                 }
-                Text("Nota: il pulsante Junction assegna la magia finale della lista a tutti gli slot di junction della squadra attiva. Triple Triad assegna tutte le 77 carte standard (127 copie) e tutte le 33 rare.",
+                Text("Nota: il pulsante Junction assegna Ultima a tutti gli slot Junction della squadra attiva. Triple Triad assegna tutte le 77 carte standard (127 copie) e tutte le 33 rare.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
             }
         }
