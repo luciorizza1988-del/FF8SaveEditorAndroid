@@ -6,7 +6,6 @@ import java.nio.ByteOrder
 data class CharacterPreview(
     val slot: Int,
     val characterId: Int,
-    val level: Long,
     val currentHp: Int,
     val maxHp: Int
 )
@@ -16,7 +15,7 @@ data class SavePreview(
     val characters: List<CharacterPreview>,
     val gfCount: Int,
     val inventoryStacks: Int,
-    val ownedCards: Int
+    val inventoryStacks: Int
 )
 
 /**
@@ -32,7 +31,6 @@ object FF8SaveReader {
     private const val PARTY_OFFSET_IN_MAIN = 2724 // MISC1.party
     private const val GIL_OFFSET_IN_MAIN = 2748 // MISC1.gils
     private const val ITEMS_OFFSET_IN_MAIN = 2772
-    private const val CARDS_OFFSET_IN_MAIN = 4752
 
     fun read(data: ByteArray, saveOffset: Int = 0): SavePreview? {
         if (saveOffset < 0 || data.size - saveOffset < RAW_SIZE) return null
@@ -53,7 +51,7 @@ object FF8SaveReader {
             val maxHp = u16(data, offset + 2)
             val exp = u32(data, offset + 4)
             val id = data[offset + 8].toInt() and 0xff
-            CharacterPreview(characterIndex, id, exp / 1000L + 1L, currentHp, maxHp)
+            CharacterPreview(characterIndex, id, currentHp, maxHp)
         }
 
         val gfCount = (0 until 16).count { index ->
@@ -64,12 +62,7 @@ object FF8SaveReader {
             val entry = u16(data, inventoryStart + index * 2)
             (entry and 0xff) != 0 && (entry ushr 8) != 0
         }
-        val cardsStart = main + CARDS_OFFSET_IN_MAIN
-        val ownedCards = (0 until 77).sumOf {
-            data[cardsStart + it].toInt() and 0xff
-        }
-
-        return SavePreview(gil, characters, gfCount, inventoryStacks, ownedCards)
+        return SavePreview(gil, characters, gfCount, inventoryStacks)
     }
 
     fun format(preview: SavePreview): String = buildString {
@@ -81,7 +74,6 @@ object FF8SaveReader {
             append("\nPersonaggi in squadra:")
             preview.characters.forEachIndexed { index, c ->
                 append("\n").append(index + 1).append(". ID ").append(c.characterId)
-                    .append(" — livello ").append(c.level)
                     .append(" — HP ").append(c.currentHp).append("/").append(c.maxHp)
             }
         } else {
