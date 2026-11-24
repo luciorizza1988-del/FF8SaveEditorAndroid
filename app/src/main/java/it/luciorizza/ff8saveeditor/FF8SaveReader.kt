@@ -14,7 +14,6 @@ data class SavePreview(
     val gil: Long,
     val characters: List<CharacterPreview>,
     val gfCount: Int,
-    val inventoryStacks: Int,
     val inventoryStacks: Int
 )
 
@@ -49,7 +48,6 @@ object FF8SaveReader {
             val offset = main + CHARACTERS_OFFSET_IN_MAIN + characterIndex * CHARACTER_SIZE
             val currentHp = u16(data, offset)
             val maxHp = u16(data, offset + 2)
-            val exp = u32(data, offset + 4)
             val id = data[offset + 8].toInt() and 0xff
             CharacterPreview(characterIndex, id, currentHp, maxHp)
         }
@@ -69,7 +67,6 @@ object FF8SaveReader {
         append("Gil: ").append(preview.gil)
         append("\nGF riconosciuti: ").append(preview.gfCount)
         append("\nTipi di oggetti presenti: ").append(preview.inventoryStacks)
-        append("\nCarte Triple Triad possedute: ").append(preview.ownedCards)
         if (preview.characters.isNotEmpty()) {
             append("\nPersonaggi in squadra:")
             preview.characters.forEachIndexed { index, c ->
