@@ -11,6 +11,7 @@ object FF8SaveWriter {
     private const val MAIN_SIZE = 4944
     private const val PARTY_OFFSET = 3188
     private const val GIL_OFFSET = 3212
+    private const val ITEMS_OFFSET = 3236
     private const val CHARACTERS_OFFSET = 1088
     private const val CHARACTER_SIZE = 152
 
@@ -44,6 +45,70 @@ object FF8SaveWriter {
         }
     }
 
+    fun updateMagicStock(source: ByteArray, saveOffset: Int = 0, characterSlot: Int, spellIndex: Int, quantity: Int): EditResult? {
+        if (characterSlot !in 0..7 || spellIndex !in 0..31 || quantity !in 0..100) return null
+        return edit(source, saveOffset) { main ->
+            val offset = CHARACTERS_OFFSET + characterSlot * CHARACTER_SIZE + 16 + spellIndex * 2
+            put16(main, offset, quantity)
+        }
+    }
+
+    /** Junction field: 0..8 stats, 9 elemental attack, 10 status attack, 11..14 elemental defense, 15..18 status defense. */
+    fun updateJunction(source: ByteArray, saveOffset: Int = 0, characterSlot: Int, junctionField: Int, magicId: Int): EditResult? {
+        if (characterSlot !in 0..7 || junctionField !in 0..18 || magicId !in 0..56) return null
+        return edit(source, saveOffset) { main ->
+            val offset = CHARACTERS_OFFSET + characterSlot * CHARACTER_SIZE
+            val fieldOffset = when (junctionField) {
+                in 0..8 -> 92 + junctionField
+                9 -> 101
+                10 -> 102
+                in 11..14 -> 103 + junctionField - 11
+                else -> 107 + junctionField - 15
+            }
+            main[offset + fieldOffset] = magicId.toByte()
+        }
+    }
+
+    /** Sets item quantity by item ID, adding it to the first free entry when necessary. */
+    fun updateItemQuantity(source: ByteArray, saveOffset: Int = 0, itemId: Int, quantity: Int): EditResult? {
+        if (itemId !in 1..255 || quantity !in 0..99) return null
+        return edit(source, saveOffset) { main ->
+            val start = ITEMS_OFFSET + 32
+            var target = -1
+            var empty = -1
+            repeat(198) { index ->
+                val entry = u16(main, start + index * 2)
+                val id = entry and 0xff
+                if (id == itemId) target = index
+                if (id == 0 && empty < 0) empty = index
+            }
+            if (quantity == 0) {
+                if (target >= 0) put16(main, start + target * 2, itemId)
+            } else {
+                val index = if (target >= 0) target else empty
+                if (index >= 0) put16(main, start + index * 2, itemId or (quantity shl 8))
+            }
+        }
+    }
+
+    fun updateCard(source: ByteArray, saveOffset: Int = 0, cardIndex: Int, quantity: Int, owned: Boolean): EditResult? {
+        if (cardIndex !in 0..76 || quantity !in 0..127) return null
+        return edit(source, saveOffset) { main ->
+            val value = (if (owned) 0x80 else 0) or quantity
+            main[4752 + cardIndex] = value.toByte()
+        }
+    }
+
+    fun updateRareCard(source: ByteArray, saveOffset: Int = 0, rareIndex: Int, owned: Boolean): EditResult? {
+        if (rareIndex !in 0..32) return null
+        return edit(source, saveOffset) { main ->
+            val offset = 4752 + 110 + rareIndex / 8
+            val bit = 1 shl (rareIndex % 8)
+            val current = main[offset].toInt() and 0xff
+            main[offset] = (if (owned) current or bit else current and bit.inv()).toByte()
+        }
+    }
+
     fun maximizeGf(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
             repeat(16) { index ->
@@ -57,7 +122,7 @@ object FF8SaveWriter {
 
     fun maximizeItems(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
-            val start = 2772 + 32
+            val start = ITEMS_OFFSET + 32
             repeat(198) { index ->
                 val entry = u16(main, start + index * 2)
                 val itemId = entry and 0xff
@@ -69,7 +134,7 @@ object FF8SaveWriter {
     fun maximizeJunctionMagic(source: ByteArray, saveOffset: Int = 0): EditResult? =
         edit(source, saveOffset) { main ->
             repeat(3) { partyIndex ->
-                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                val characterIndex = main[3188 + partyIndex].toInt() and 0xff
                 if (characterIndex in 0..7) {
                     val magicStart = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE + 10
                     repeat(32) { spellIndex -> put16(main, magicStart + spellIndex * 2, 100) }
