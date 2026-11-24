@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -118,6 +119,57 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri: Uri? ->
+            if (treeUri != null) {
+                runCatching {
+                    contentResolver.takePersistableUriPermission(treeUri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val root = DocumentFile.fromTreeUri(this@MainActivity, treeUri) ?: error("Cartella non accessibile")
+                    fun findCandidate(folder: DocumentFile, depth: Int): Pair<String, ByteArray>? {
+                        if (depth > 5) return null
+                        for (entry in folder.listFiles()) {
+                            if (entry.isDirectory) {
+                                val nested = findCandidate(entry, depth + 1)
+                                if (nested != null) return nested
+                            } else if (entry.isFile) {
+                                val bytes = contentResolver.openInputStream(entry.uri)?.use { it.readBytes() } ?: continue
+                                var offset = 0
+                                if (bytes.size >= 131072) {
+                                    for (slot in 0 until 15) {
+                                        val candidate = 8192 + slot * 8192
+                                        if (FF8SaveReader.read(bytes, candidate) != null) { offset = candidate; break }
+                                    }
+                                }
+                                if (FF8SaveReader.read(bytes, offset) != null) return (entry.name ?: "salvataggio-FF8") to bytes
+                            }
+                        }
+                        return null
+                    }
+                    val found = findCandidate(root, 0) ?: error("Nella cartella scelta non trovo un salvataggio FF8 valido.")
+                    val (name, bytes) = found
+                    var offset = 0
+                    if (bytes.size >= 131072) {
+                        for (slot in 0 until 15) {
+                            val candidate = 8192 + slot * 8192
+                            if (FF8SaveReader.read(bytes, candidate) != null) { offset = candidate; break }
+                        }
+                    }
+                    val backupDir = File(filesDir, "backups").apply { mkdirs() }
+                    val safeName = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                    val backup = File(backupDir, System.currentTimeMillis().toString() + "-" + safeName)
+                    FileOutputStream(backup).use { it.write(bytes) }
+                    Triple(name, bytes, backup) to offset
+                }.onSuccess { pair ->
+                    val file = pair.first
+                    val offset = pair.second
+                    selectedName = file.first
+                    pendingBytes = file.second
+                    backupFile = file.third
+                    saveOffset = offset
+                    status = FF8SaveReader.read(file.second, offset)?.let { "Salvataggio FF8 importato dalla cartella.\n\n" + FF8SaveReader.format(it) } ?: "File importato, ma anteprima FF8 non disponibile."
+                }.onFailure { status = "Importazione cartella non riuscita: " + it.localizedMessage }
+            }
+        }
+
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
@@ -138,6 +190,9 @@ class MainActivity : ComponentActivity() {
                 }
                 Button(onClick = { openLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Apri salvataggio")
+                }
+                OutlinedButton(onClick = { folderLauncher.launch(null) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Importa dalla cartella")
                 }
                 Text("MODIFICA MANUALE", style = MaterialTheme.typography.headlineSmall)
                 Text("Scegli tu i valori. Gli indici dei personaggi vanno da 0 a 7.")
