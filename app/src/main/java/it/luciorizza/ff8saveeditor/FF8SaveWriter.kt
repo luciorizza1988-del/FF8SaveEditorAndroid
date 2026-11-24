@@ -44,6 +44,41 @@ object FF8SaveWriter {
         }
     }
 
+    fun maximizeItems(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            val start = 2772 + 32
+            repeat(198) { index ->
+                val entry = u16(main, start + index * 2)
+                val itemId = entry and 0xff
+                val quantity = entry ushr 8
+                if (itemId != 0 && quantity != 0) put16(main, start + index * 2, itemId or (99 shl 8))
+            }
+        }
+
+    fun maximizeJunctionMagic(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            repeat(3) { partyIndex ->
+                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                if (characterIndex in 0..7) {
+                    val magicStart = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE + 10
+                    repeat(32) { spellIndex -> put16(main, magicStart + spellIndex * 2, 100) }
+                }
+            }
+        }
+
+    fun maximizeParty(source: ByteArray, saveOffset: Int = 0): EditResult? =
+        edit(source, saveOffset) { main ->
+            repeat(3) { partyIndex ->
+                val characterIndex = main[2724 + partyIndex].toInt() and 0xff
+                if (characterIndex in 0..7) {
+                    val offset = CHARACTERS_OFFSET + characterIndex * CHARACTER_SIZE
+                    put16(main, offset, 9999)
+                    put16(main, offset + 2, 9999)
+                    put32(main, offset + 4, 1000000L)
+                }
+            }
+        }
+
     private inline fun edit(
         source: ByteArray,
         saveOffset: Int,
