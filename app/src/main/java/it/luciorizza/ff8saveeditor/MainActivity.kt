@@ -139,6 +139,11 @@ class MainActivity : ComponentActivity() {
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
                     Text("Porta a 100 le magie della squadra")
                 }
+                Text("GF - GUARDIAN FORCE", style = MaterialTheme.typography.titleLarge)
+                Button(onClick = { applyEdit { b, o -> FF8SaveWriter.maximizeGf(b, o) } },
+                    enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
+                    Text("Massimizza HP ed esperienza dei GF")
+                }
                 Text("OGGETTI", style = MaterialTheme.typography.titleLarge)
                 Button(onClick = { applyEdit { b, o -> FF8SaveWriter.maximizeItems(b, o) } },
                     enabled = pendingBytes != null, modifier = Modifier.fillMaxWidth()) {
