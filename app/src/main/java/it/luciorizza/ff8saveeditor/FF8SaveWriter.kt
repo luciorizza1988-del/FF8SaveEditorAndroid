@@ -61,17 +61,17 @@ object FF8SaveWriter {
         val checksum = crc16(main)
         main.copyInto(output, saveOffset + MAIN_OFFSET)
         put16(output, saveOffset + 384, checksum)
-        put16(output, saveOffset + MAIN_OFFSET + MAIN_SIZE, checksum)
 
         // A standalone 5408-byte raw save is expanded to a standard 8192-byte block.
         if (output.size - saveOffset == RAW_SIZE) {
+            if (saveOffset != 0) return null
             val expanded = ByteArray(SLOT_SIZE)
-            output.copyInto(expanded, 0, 0, saveOffset)
-            output.copyInto(expanded, saveOffset, saveOffset, saveOffset + RAW_SIZE)
-            put16(expanded, saveOffset + MAIN_OFFSET + MAIN_SIZE, checksum)
-            return EditResult(expanded, saveOffset)
+            output.copyInto(expanded, 0, 0, RAW_SIZE)
+            put16(expanded, MAIN_OFFSET + MAIN_SIZE, checksum)
+            return EditResult(expanded, 0)
         }
         if (output.size - saveOffset < SLOT_SIZE) return null
+        put16(output, saveOffset + MAIN_OFFSET + MAIN_SIZE, checksum)
         return EditResult(output, saveOffset)
     }
 
